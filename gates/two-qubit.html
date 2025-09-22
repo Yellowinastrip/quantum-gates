@@ -54,16 +54,16 @@
       </div>
       <div class="d-flex flex-column gap-2 align-self-center" style="min-width:280px">
         <div>
-          <label class="form-label mb-1">Gate permutation (basis order: [$|00\rangle$, $|01\rangle$, $|10\rangle$, $|11\rangle$])</label>
+          <label class="form-label mb-1">Permutations of computational basis</label>
           <select id="permSelect" class="form-select"></select>
         </div>
         <div class="form-check form-switch">
           <input class="form-check-input" type="checkbox" id="mergeInputsSwitch">
-          <label class="form-check-label" for="mergeInputsSwitch">Merge inputs and show in |00⟩ basis</label>
+          <label class="form-check-label" for="mergeInputsSwitch">Merge inputs</label>
         </div>
         <div class="form-check form-switch">
           <input class="form-check-input" type="checkbox" id="decomposeOutputSwitch">
-          <label class="form-check-label" for="decomposeOutputSwitch">Show output as two qubits (if decomposable)</label>
+          <label class="form-check-label" for="decomposeOutputSwitch">Decompose outputs (if possible)</label>
         </div>
         <div id="decomposeAlert" class="alert alert-warning py-2 px-3 vis-hidden mb-0" role="alert">
           Output is not decomposable.
