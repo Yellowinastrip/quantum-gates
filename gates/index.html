@@ -28,13 +28,13 @@
     .hide-full-range .toggled { display: none !important; }
     .svg-container { position: relative; }
     .text-overlay { position: absolute; pointer-events: none; text-align: center; font-size: 18px; color: #1f2937; }
-    .text-overlay.input-a { top: 120px; left: 90px; transform: translate(-50%, -50%); }
-    .text-overlay.input-b { top: 210px; left: 90px; transform: translate(-50%, -50%); }
-    .text-overlay.input-combined { top: 165px; left: 130px; transform: translate(-50%, -50%); }
-    .text-overlay.output-combined { top: 165px; left: 940px; transform: translate(-50%, -50%); }
-    .text-overlay.output-a { top: 120px; left: 985px; transform: translate(-50%, -50%); }
-    .text-overlay.output-b { top: 210px; left: 985px; transform: translate(-50%, -50%); }
-    .text-overlay.gate-label { top: 165px; left: 540px; transform: translate(-50%, -50%); font-size: 24px; color: #212529; }
+    .text-overlay.input-a { top: 37%; left: 8.18%; transform: translate(-50%, -50%); }
+    .text-overlay.input-b { top: 63.33%; left: 8.18%; transform: translate(-50%, -50%); }
+    .text-overlay.input-combined { top: 50%; left: 12.27%; transform: translate(-50%, -50%); }
+    .text-overlay.output-combined { top: 50%; left: 86.92%; transform: translate(-50%, -50%); }
+    .text-overlay.output-a { top: 37%; left: 91%; transform: translate(-50%, -50%); }
+    .text-overlay.output-b { top: 63.33%; left: 91%; transform: translate(-50%, -50%); }
+    .text-overlay.gate-label { top: 50%; left: 50%; transform: translate(-50%, -50%); color: #212529; }
   </style>
 </head>
 <body class="bg-light text-dark min-vh-100">
@@ -135,7 +135,7 @@
         <div id="outputText" class="text-overlay output-combined">$|00\rangle$</div>
         <div id="outAtext" class="text-overlay output-a vis-hidden">—</div>
         <div id="outBtext" class="text-overlay output-b vis-hidden">—</div>
-        <div id="gateLabel" class="text-overlay gate-label">$ \left| \begin{array}{c} x \\ y \end{array}\right\rangle \mapsto \left| \begin{array}{c} x \\ y \oplus f(x) \end{array}\right\rangle $</div>
+        <div id="gateLabel" class="text-overlay gate-label">$ U_f $</div>
       </div>
     </section>
 
