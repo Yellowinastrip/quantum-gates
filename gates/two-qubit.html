@@ -6,10 +6,33 @@
   <title>Two-Qubit Gate Visualizer with Permutations</title>
   <!-- Bootstrap 5 -->
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <!-- MathJax -->
+  <script>
+    MathJax = {
+      tex: {
+        inlineMath: [['$', '$'], ['\\(', '\\)']],
+        displayMath: [['$$', '$$'], ['\\[', '\\]']]
+      },
+      svg: {
+        fontCache: 'global'
+      }
+    };
+  </script>
+  <script type="text/javascript" id="MathJax-script" async
+    src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js">
+  </script>
   <style>
     .circle-container { position: relative; width: 260px; height: 260px; border: 2px dashed #d1d5db; border-radius: 50%; margin: 1rem auto; }
     .circle-point { position: absolute; transform: translate(-50%, -50%); }
     .vis-hidden { display: none !important; }
+    .svg-container { position: relative; }
+    .text-overlay { position: absolute; pointer-events: none; text-align: center; font-size: 18px; color: #1f2937; }
+    .text-overlay.input-a { top: 120px; left: 90px; transform: translate(-50%, -50%); }
+    .text-overlay.input-b { top: 210px; left: 90px; transform: translate(-50%, -50%); }
+    .text-overlay.input-combined { top: 165px; left: 130px; transform: translate(-50%, -50%); }
+    .text-overlay.output-combined { top: 165px; left: 940px; transform: translate(-50%, -50%); }
+    .text-overlay.output-a { top: 120px; left: 985px; transform: translate(-50%, -50%); }
+    .text-overlay.output-b { top: 210px; left: 985px; transform: translate(-50%, -50%); }
   </style>
 </head>
 <body class="bg-light text-dark min-vh-100">
@@ -30,7 +53,7 @@
       </div>
       <div class="d-flex flex-column gap-2 align-self-center" style="min-width:280px">
         <div>
-          <label class="form-label mb-1">Gate permutation (basis order: [|00⟩, |01⟩, |10⟩, |11⟩])</label>
+          <label class="form-label mb-1">Gate permutation (basis order: [$|00\rangle$, $|01\rangle$, $|10\rangle$, $|11\rangle$])</label>
           <select id="permSelect" class="form-select"></select>
         </div>
         <div class="form-check form-switch">
@@ -49,61 +72,65 @@
 
     <!-- Gate and output visualization -->
     <section class="bg-white rounded shadow border p-3">
-      <svg id="circuit" viewBox="0 0 980 300" class="w-100" style="min-width:760px">
-        <defs>
-          <marker id="arrow" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
-            <path d="M 0 0 L 10 5 L 0 10 z" fill="#6c757d"></path>
-          </marker>
-        </defs>
+      <div class="svg-container">
+        <svg id="circuit" viewBox="0 0 980 300" class="w-100" style="min-width:760px">
+          <defs>
+            <marker id="arrow" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+              <path d="M 0 0 L 10 5 L 0 10 z" fill="#6c757d"></path>
+            </marker>
+          </defs>
 
-        <!-- Input wires -->
-        <line x1="80" y1="110" x2="380" y2="110" stroke="#adb5bd" stroke-width="4" />
-        <line x1="80" y1="190" x2="380" y2="190" stroke="#adb5bd" stroke-width="4" />
+          <!-- Input wires -->
+          <line x1="80" y1="110" x2="380" y2="110" stroke="#adb5bd" stroke-width="4" />
+          <line x1="80" y1="190" x2="380" y2="190" stroke="#adb5bd" stroke-width="4" />
 
-        <!-- Gate box -->
-        <rect x="380" y="80" width="220" height="140" rx="16" ry="16" fill="#fff3cd" stroke="#ffc107" stroke-width="2" />
-        <text id="gateLabel" x="490" y="150" text-anchor="middle" alignment-baseline="middle" font-size="24" fill="#212529">U_f</text>
+          <!-- Gate box -->
+          <rect x="380" y="80" width="220" height="140" rx="16" ry="16" fill="#fff3cd" stroke="#ffc107" stroke-width="2" />
+          <text id="gateLabel" x="490" y="150" text-anchor="middle" alignment-baseline="middle" font-size="24" fill="#212529">U_f</text>
 
-        <!-- Output wires -->
-        <line x1="600" y1="110" x2="900" y2="110" stroke="#adb5bd" stroke-width="4" />
-        <line x1="600" y1="190" x2="900" y2="190" stroke="#adb5bd" stroke-width="4" />
+          <!-- Output wires -->
+          <line x1="600" y1="110" x2="900" y2="110" stroke="#adb5bd" stroke-width="4" />
+          <line x1="600" y1="190" x2="900" y2="190" stroke="#adb5bd" stroke-width="4" />
 
-        <!-- Input bubbles (separate) -->
-        <g id="inputBoxesSeparate">
-          <g>
-            <rect x="10" y="80" width="140" height="60" rx="12" fill="#eef4ff" stroke="#0d6efd" />
-            <text id="inputAText" x="80" y="110" text-anchor="middle" alignment-baseline="middle">|0⟩</text>
+          <!-- Input bubbles (separate) -->
+          <g id="inputBoxesSeparate">
+            <g>
+              <rect x="10" y="80" width="140" height="60" rx="12" fill="#eef4ff" stroke="#0d6efd" />
+            </g>
+            <g>
+              <rect x="10" y="160" width="140" height="60" rx="12" fill="#eef4ff" stroke="#0d6efd" />
+            </g>
           </g>
-          <g>
-            <rect x="10" y="160" width="140" height="60" rx="12" fill="#eef4ff" stroke="#0d6efd" />
-            <text id="inputBText" x="80" y="190" text-anchor="middle" alignment-baseline="middle">|0⟩</text>
-          </g>
-        </g>
 
-        <!-- Input bubble (merged combined in basis) -->
-        <g id="inputBoxMerged" class="vis-hidden">
-          <rect x="10" y="100" width="220" height="100" rx="12" fill="#ecfffd" stroke="#20c997" />
-          <text id="inputCombinedText" x="120" y="150" text-anchor="middle" alignment-baseline="middle">|00⟩</text>
-        </g>
-
-        <!-- Output bubble (combined basis) -->
-        <g id="outputBoxCombined">
-          <rect x="740" y="100" width="220" height="100" rx="12" fill="#ecfffd" stroke="#20c997" />
-          <text id="outputText" x="850" y="150" text-anchor="middle" alignment-baseline="middle">|00⟩</text>
-        </g>
-
-        <!-- Output boxes (two single‑qubit) -->
-        <g id="outputBoxesDecomp" class="vis-hidden">
-          <g>
-            <rect x="820" y="80" width="140" height="60" rx="12" fill="#eef4ff" stroke="#0d6efd" />
-            <text id="outAtext" x="895" y="110" text-anchor="middle" alignment-baseline="middle">—</text>
+          <!-- Input bubble (merged combined in basis) -->
+          <g id="inputBoxMerged" class="vis-hidden">
+            <rect x="10" y="100" width="220" height="100" rx="12" fill="#ecfffd" stroke="#20c997" />
           </g>
-          <g>
-            <rect x="820" y="160" width="140" height="60" rx="12" fill="#eef4ff" stroke="#0d6efd" />
-            <text id="outBtext" x="895" y="190" text-anchor="middle" alignment-baseline="middle">—</text>
+
+          <!-- Output bubble (combined basis) -->
+          <g id="outputBoxCombined">
+            <rect x="740" y="100" width="220" height="100" rx="12" fill="#ecfffd" stroke="#20c997" />
           </g>
-        </g>
-      </svg>
+
+          <!-- Output boxes (two single‑qubit) -->
+          <g id="outputBoxesDecomp" class="vis-hidden">
+            <g>
+              <rect x="820" y="80" width="140" height="60" rx="12" fill="#eef4ff" stroke="#0d6efd" />
+            </g>
+            <g>
+              <rect x="820" y="160" width="140" height="60" rx="12" fill="#eef4ff" stroke="#0d6efd" />
+            </g>
+          </g>
+        </svg>
+        
+        <!-- HTML text overlays for MathJax rendering -->
+        <div id="inputAText" class="text-overlay input-a">$|0\rangle$</div>
+        <div id="inputBText" class="text-overlay input-b">$|0\rangle$</div>
+        <div id="inputCombinedText" class="text-overlay input-combined vis-hidden">$|00\rangle$</div>
+        <div id="outputText" class="text-overlay output-combined">$|00\rangle$</div>
+        <div id="outAtext" class="text-overlay output-a vis-hidden">—</div>
+        <div id="outBtext" class="text-overlay output-b vis-hidden">—</div>
+      </div>
     </section>
 
     <footer class="text-center text-muted small mt-4">Built with Bootstrap. No build tools required.</footer>
@@ -112,14 +139,14 @@
   <script>
     // -------- Single‑qubit presets (a|0> + b|1>) --------
     const STATES = [
-      { label: '|0⟩', a: 1, b: 0 },
-      { label: '|0⟩+|1⟩', a: 1, b: 1 },
-      { label: '|1⟩', a: 0, b: 1 },
-      { label: '−|0⟩+|1⟩', a: -1, b: 1 },
-      { label: '−|0⟩', a: -1, b: 0 },
-      { label: '−|0⟩−|1⟩', a: -1, b: -1 },
-      { label: '−|1⟩', a: 0, b: -1 },
-      { label: '|0⟩−|1⟩', a: 1, b: -1 },
+      { label: '|0⟩', mathLabel: '$|0\\rangle$', a: 1, b: 0 },
+      { label: '|0⟩+|1⟩', mathLabel: '$|0\\rangle+|1\\rangle$', a: 1, b: 1 },
+      { label: '|1⟩', mathLabel: '$|1\\rangle$', a: 0, b: 1 },
+      { label: '−|0⟩+|1⟩', mathLabel: '$-|0\\rangle+|1\\rangle$', a: -1, b: 1 },
+      { label: '−|0⟩', mathLabel: '$-|0\\rangle$', a: -1, b: 0 },
+      { label: '−|0⟩−|1⟩', mathLabel: '$-|0\\rangle-|1\\rangle$', a: -1, b: -1 },
+      { label: '−|1⟩', mathLabel: '$-|1\\rangle$', a: 0, b: -1 },
+      { label: '|0⟩−|1⟩', mathLabel: '$|0\\rangle-|1\\rangle$', a: 1, b: -1 },
     ];
 
     // -------- DOM refs --------
@@ -202,12 +229,17 @@
 
         const label = document.createElement('label');
         label.className='d-block small';
-        label.textContent = state.label;
+        label.innerHTML = state.mathLabel;
 
         wrapper.appendChild(input);
         wrapper.appendChild(label);
         circle.appendChild(wrapper);
       });
+      
+      // Trigger MathJax rendering for the circle
+      if (window.MathJax && window.MathJax.typesetPromise) {
+        MathJax.typesetPromise([circle]).catch(err => console.log('MathJax error:', err));
+      }
     }
 
     // Compute vector in computational basis from two single‑qubit choices
@@ -225,10 +257,19 @@
 
     // Format a 4‑vector as a sum of basis kets with ±1 coefficients
     function formatBasis(vec){
-      const basis=['|00⟩','|01⟩','|10⟩','|11⟩'];
-      let repr='';
-      vec.forEach((c,i)=>{ if(c!==0){ if(repr!=='') repr+=' + '; repr+=(c===-1?'−':'')+basis[i]; } });
-      return repr || '0';
+      const basis=['|00\\rangle','|01\\rangle','|10\\rangle','|11\\rangle'];
+      let terms = [];
+      vec.forEach((c,i)=>{ 
+        if(c!==0){ 
+          if(terms.length === 0) {
+            terms.push((c===-1?'-':'') + basis[i]);
+          } else {
+            terms.push((c===-1?' - ':' + ') + basis[i]);
+          }
+        } 
+      });
+      const result = terms.length > 0 ? terms.join('') : '0';
+      return '$' + result + '$';
     }
 
     // ---------- Precompute all 64 decomposable outputs ----------
@@ -255,50 +296,90 @@
       const perm = ALL_PERMS[+permSelect.value];
 
       // Input side
-      inputAText.textContent = STATES[idxA].label;
-      inputBText.textContent = STATES[idxB].label;
+      inputAText.innerHTML = STATES[idxA].mathLabel;
+      inputBText.innerHTML = STATES[idxB].mathLabel;
       const vin = inputVector();
 
       // Input merged box text
-      inputCombinedText.textContent = formatBasis(vin);
+      inputCombinedText.innerHTML = formatBasis(vin);
 
       // Output
       const vout = applyPerm(vin, perm);
-      outputText.textContent = formatBasis(vout);
+      outputText.innerHTML = formatBasis(vout);
 
       // Handle input merge toggle
       const mergeInputs = mergeInputsSwitch.checked;
       inputBoxesSeparate.classList.toggle('vis-hidden', mergeInputs);
       inputBoxMerged.classList.toggle('vis-hidden', !mergeInputs);
+      
+      // Toggle text overlays accordingly
+      inputAText.classList.toggle('vis-hidden', mergeInputs);
+      inputBText.classList.toggle('vis-hidden', mergeInputs);
+      inputCombinedText.classList.toggle('vis-hidden', !mergeInputs);
 
       // Handle output decomposition toggle
       const wantDecomp = decomposeOutputSwitch.checked;
       const decomp = wantDecomp ? tryDecompose(vout) : null;
       if (wantDecomp && decomp) {
         // Show two output boxes with single‑qubit labels
-        outAtext.textContent = STATES[decomp.ia].label;
-        outBtext.textContent = STATES[decomp.ib].label;
+        outAtext.innerHTML = STATES[decomp.ia].mathLabel;
+        outBtext.innerHTML = STATES[decomp.ib].mathLabel;
         outputBoxCombined.classList.add('vis-hidden');
         outputBoxesDecomp.classList.remove('vis-hidden');
+        outputText.classList.add('vis-hidden');
+        outAtext.classList.remove('vis-hidden');
+        outBtext.classList.remove('vis-hidden');
         decomposeAlert.classList.add('vis-hidden');
       } else {
         // Show combined; optionally show alert if user requested decomp but not possible
         outputBoxCombined.classList.remove('vis-hidden');
         outputBoxesDecomp.classList.add('vis-hidden');
+        outputText.classList.remove('vis-hidden');
+        outAtext.classList.add('vis-hidden');
+        outBtext.classList.add('vis-hidden');
         if (wantDecomp && !decomp) decomposeAlert.classList.remove('vis-hidden'); else decomposeAlert.classList.add('vis-hidden');
+      }
+      
+      // Trigger MathJax rendering for updated content
+      if (window.MathJax && window.MathJax.typesetPromise) {
+        const elements = [inputAText, inputBText, inputCombinedText, outputText, outAtext, outBtext];
+        MathJax.typesetPromise(elements).catch(err => console.log('MathJax error:', err));
       }
     }
 
-    // Init
-    placeCirclePoints(circleA,true);
-    placeCirclePoints(circleB,false);
-    populatePermSelect();
+    // Helper function to initialize and render with MathJax
+    function initializeApp() {
+      // Init
+      placeCirclePoints(circleA,true);
+      placeCirclePoints(circleB,false);
+      populatePermSelect();
 
-    permSelect.addEventListener('change', updateView);
-    mergeInputsSwitch.addEventListener('change', updateView);
-    decomposeOutputSwitch.addEventListener('change', updateView);
+      permSelect.addEventListener('change', updateView);
+      mergeInputsSwitch.addEventListener('change', updateView);
+      decomposeOutputSwitch.addEventListener('change', updateView);
 
-    updateView();
+      updateView();
+      
+      // Render the gate permutation label with MathJax
+      if (window.MathJax && window.MathJax.typesetPromise) {
+        const permLabel = document.querySelector('label[for="permSelect"], .form-label');
+        if (permLabel) {
+          MathJax.typesetPromise([permLabel]).catch(err => console.log('MathJax error:', err));
+        }
+      }
+    }
+
+    // Wait for MathJax to load before initializing
+    if (window.MathJax) {
+      if (window.MathJax.startup) {
+        MathJax.startup.promise.then(() => initializeApp());
+      } else {
+        initializeApp();
+      }
+    } else {
+      // Fallback if MathJax isn't loaded
+      document.addEventListener('DOMContentLoaded', initializeApp);
+    }
   </script>
 </body>
 </html>
