@@ -16,11 +16,10 @@
   <main class="container py-4">
     <header class="mb-4 text-center">
       <h1 class="h3">Two-Qubit Gate Visualizer</h1>
-      <p class="text-muted">Select two inputs on circles, choose a basis permutation, and view the output in the computational basis |00⟩, |01⟩, |10⟩, |11⟩ (no normalization). New: toggle input representation (merge into one box) and try to decompose outputs back to two single‑qubit states when possible.</p>
     </header>
 
     <!-- Controls row above the gate: two circles + permutation + view toggles -->
-    <section class="d-flex justify-content-center align-items-start gap-4 flex-wrap mb-3">
+    <section class="d-flex justify-content-center align-items-start gap-5 flex-wrap mb-3">
       <div>
         <h2 class="h6 text-center">Input A</h2>
         <div class="circle-container" id="circleA"></div>
@@ -43,7 +42,7 @@
           <label class="form-check-label" for="decomposeOutputSwitch">Show output as two qubits (if decomposable)</label>
         </div>
         <div id="decomposeAlert" class="alert alert-warning py-2 px-3 vis-hidden mb-0" role="alert">
-          Output is not decomposable into the preset two‑qubit tensor products.
+          Output is not decomposable.
         </div>
       </div>
     </section>
@@ -179,11 +178,11 @@
 
     // Place circle radio points
     function placeCirclePoints(circle, isA) {
-      const r = 120; const cx = 130, cy = 130;
+      const r = 130; const cx = 130, cy = 130;
       STATES.forEach((state, i) => {
         const angle = (i / STATES.length) * 2 * Math.PI - Math.PI/2;
-        const x = cx + r * Math.cos(angle);
-        const y = cy + r * Math.sin(angle);
+        const x = cx + r * Math.cos(angle) - 2;
+        const y = cy + r * Math.sin(angle) + 8;
 
         const wrapper = document.createElement('div');
         wrapper.className = 'circle-point text-center';
