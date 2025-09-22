@@ -34,7 +34,7 @@
     .text-overlay.output-combined { top: 50%; left: 86.92%; transform: translate(-50%, -50%); }
     .text-overlay.output-a { top: 37%; left: 91%; transform: translate(-50%, -50%); }
     .text-overlay.output-b { top: 63.33%; left: 91%; transform: translate(-50%, -50%); }
-    .text-overlay.gate-label { top: 50%; left: 50%; transform: translate(-50%, -50%); color: #212529; }
+    .text-overlay.gate-label { top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 125%; color: #212529; }
   </style>
 </head>
 <body class="bg-light text-dark min-vh-100">
@@ -135,7 +135,7 @@
         <div id="outputText" class="text-overlay output-combined">$|00\rangle$</div>
         <div id="outAtext" class="text-overlay output-a vis-hidden">—</div>
         <div id="outBtext" class="text-overlay output-b vis-hidden">—</div>
-        <div id="gateLabel" class="text-overlay gate-label">$ U_f $</div>
+        <div id="gateLabel" class="text-overlay gate-label">$ \begin{array}{c} x & & & & x \\ & & & U_f &  \\ y & & & & y \oplus f(x) \end{array} $</div>
       </div>
     </section>
 
