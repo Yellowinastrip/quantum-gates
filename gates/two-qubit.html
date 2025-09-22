@@ -9,17 +9,18 @@
   <style>
     .circle-container { position: relative; width: 260px; height: 260px; border: 2px dashed #d1d5db; border-radius: 50%; margin: 1rem auto; }
     .circle-point { position: absolute; transform: translate(-50%, -50%); }
+    .vis-hidden { display: none !important; }
   </style>
 </head>
 <body class="bg-light text-dark min-vh-100">
   <main class="container py-4">
     <header class="mb-4 text-center">
       <h1 class="h3">Two-Qubit Gate Visualizer</h1>
-      <p class="text-muted">Select two inputs on circles, then apply a gate permutation. Output is expressed in the computational basis |00⟩, |01⟩, |10⟩, |11⟩ (without normalization).</p>
+      <p class="text-muted">Select two inputs on circles, choose a basis permutation, and view the output in the computational basis |00⟩, |01⟩, |10⟩, |11⟩ (no normalization). New: toggle input representation (merge into one box) and try to decompose outputs back to two single‑qubit states when possible.</p>
     </header>
 
-    <!-- Circles and permutation selector -->
-    <section class="d-flex justify-content-center gap-5 mb-4 flex-wrap">
+    <!-- Controls row above the gate: two circles + permutation + view toggles -->
+    <section class="d-flex justify-content-center align-items-start gap-4 flex-wrap mb-3">
       <div>
         <h2 class="h6 text-center">Input A</h2>
         <div class="circle-container" id="circleA"></div>
@@ -28,15 +29,28 @@
         <h2 class="h6 text-center">Input B</h2>
         <div class="circle-container" id="circleB"></div>
       </div>
-      <div class="align-self-center">
-        <h2 class="h6 text-center">Gate Permutation</h2>
-        <select id="permSelect" class="form-select"></select>
+      <div class="d-flex flex-column gap-2 align-self-center" style="min-width:280px">
+        <div>
+          <label class="form-label mb-1">Gate permutation (basis order: [|00⟩, |01⟩, |10⟩, |11⟩])</label>
+          <select id="permSelect" class="form-select"></select>
+        </div>
+        <div class="form-check form-switch">
+          <input class="form-check-input" type="checkbox" id="mergeInputsSwitch">
+          <label class="form-check-label" for="mergeInputsSwitch">Merge inputs and show in |00⟩ basis</label>
+        </div>
+        <div class="form-check form-switch">
+          <input class="form-check-input" type="checkbox" id="decomposeOutputSwitch">
+          <label class="form-check-label" for="decomposeOutputSwitch">Show output as two qubits (if decomposable)</label>
+        </div>
+        <div id="decomposeAlert" class="alert alert-warning py-2 px-3 vis-hidden mb-0" role="alert">
+          Output is not decomposable into the preset two‑qubit tensor products.
+        </div>
       </div>
     </section>
 
     <!-- Gate and output visualization -->
     <section class="bg-white rounded shadow border p-3">
-      <svg id="circuit" viewBox="0 0 900 260" class="w-100" style="min-width:680px">
+      <svg id="circuit" viewBox="0 0 980 300" class="w-100" style="min-width:760px">
         <defs>
           <marker id="arrow" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
             <path d="M 0 0 L 10 5 L 0 10 z" fill="#6c757d"></path>
@@ -44,31 +58,51 @@
         </defs>
 
         <!-- Input wires -->
-        <line x1="80" y1="90" x2="360" y2="90" stroke="#adb5bd" stroke-width="4" marker-end="url(#arrow)" />
-        <line x1="80" y1="170" x2="360" y2="170" stroke="#adb5bd" stroke-width="4" marker-end="url(#arrow)" />
+        <line x1="80" y1="110" x2="380" y2="110" stroke="#adb5bd" stroke-width="4" />
+        <line x1="80" y1="190" x2="380" y2="190" stroke="#adb5bd" stroke-width="4" />
 
         <!-- Gate box -->
-        <rect x="360" y="60" width="180" height="120" rx="16" ry="16" fill="#f8f9fa" stroke="#0d6efd" stroke-width="2" />
-        <text id="gateLabel" x="450" y="120" text-anchor="middle" alignment-baseline="middle" font-size="16" fill="#212529">Permutation</text>
+        <rect x="380" y="80" width="220" height="140" rx="16" ry="16" fill="#fff3cd" stroke="#ffc107" stroke-width="2" />
+        <text id="gateLabel" x="490" y="150" text-anchor="middle" alignment-baseline="middle" font-size="24" fill="#212529">U_f</text>
 
         <!-- Output wires -->
-        <line x1="540" y1="90" x2="820" y2="90" stroke="#adb5bd" stroke-width="4" marker-end="url(#arrow)" />
-        <line x1="540" y1="170" x2="820" y2="170" stroke="#adb5bd" stroke-width="4" marker-end="url(#arrow)" />
+        <line x1="600" y1="110" x2="900" y2="110" stroke="#adb5bd" stroke-width="4" />
+        <line x1="600" y1="190" x2="900" y2="190" stroke="#adb5bd" stroke-width="4" />
 
-        <!-- Input bubbles -->
-        <g>
-          <rect x="10" y="60" width="120" height="60" rx="12" fill="#eef4ff" stroke="#0d6efd" />
-          <text id="inputAText" x="70" y="90" text-anchor="middle" alignment-baseline="middle">|0⟩</text>
-        </g>
-        <g>
-          <rect x="10" y="140" width="120" height="60" rx="12" fill="#eef4ff" stroke="#0d6efd" />
-          <text id="inputBText" x="70" y="170" text-anchor="middle" alignment-baseline="middle">|0⟩</text>
+        <!-- Input bubbles (separate) -->
+        <g id="inputBoxesSeparate">
+          <g>
+            <rect x="10" y="80" width="140" height="60" rx="12" fill="#eef4ff" stroke="#0d6efd" />
+            <text id="inputAText" x="80" y="110" text-anchor="middle" alignment-baseline="middle">|0⟩</text>
+          </g>
+          <g>
+            <rect x="10" y="160" width="140" height="60" rx="12" fill="#eef4ff" stroke="#0d6efd" />
+            <text id="inputBText" x="80" y="190" text-anchor="middle" alignment-baseline="middle">|0⟩</text>
+          </g>
         </g>
 
-        <!-- Output bubble -->
-        <g>
-          <rect x="720" y="80" width="160" height="100" rx="12" fill="#ecfffd" stroke="#20c997" />
-          <text id="outputText" x="800" y="130" text-anchor="middle" alignment-baseline="middle">|00⟩</text>
+        <!-- Input bubble (merged combined in basis) -->
+        <g id="inputBoxMerged" class="vis-hidden">
+          <rect x="10" y="100" width="220" height="100" rx="12" fill="#ecfffd" stroke="#20c997" />
+          <text id="inputCombinedText" x="120" y="150" text-anchor="middle" alignment-baseline="middle">|00⟩</text>
+        </g>
+
+        <!-- Output bubble (combined basis) -->
+        <g id="outputBoxCombined">
+          <rect x="740" y="100" width="220" height="100" rx="12" fill="#ecfffd" stroke="#20c997" />
+          <text id="outputText" x="850" y="150" text-anchor="middle" alignment-baseline="middle">|00⟩</text>
+        </g>
+
+        <!-- Output boxes (two single‑qubit) -->
+        <g id="outputBoxesDecomp" class="vis-hidden">
+          <g>
+            <rect x="820" y="80" width="140" height="60" rx="12" fill="#eef4ff" stroke="#0d6efd" />
+            <text id="outAtext" x="895" y="110" text-anchor="middle" alignment-baseline="middle">—</text>
+          </g>
+          <g>
+            <rect x="820" y="160" width="140" height="60" rx="12" fill="#eef4ff" stroke="#0d6efd" />
+            <text id="outBtext" x="895" y="190" text-anchor="middle" alignment-baseline="middle">—</text>
+          </g>
         </g>
       </svg>
     </section>
@@ -77,6 +111,7 @@
   </main>
 
   <script>
+    // -------- Single‑qubit presets (a|0> + b|1>) --------
     const STATES = [
       { label: '|0⟩', a: 1, b: 0 },
       { label: '|0⟩+|1⟩', a: 1, b: 1 },
@@ -88,23 +123,39 @@
       { label: '|0⟩−|1⟩', a: 1, b: -1 },
     ];
 
+    // -------- DOM refs --------
     const circleA = document.getElementById('circleA');
     const circleB = document.getElementById('circleB');
     const inputAText = document.getElementById('inputAText');
     const inputBText = document.getElementById('inputBText');
+    const inputBoxesSeparate = document.getElementById('inputBoxesSeparate');
+    const inputBoxMerged = document.getElementById('inputBoxMerged');
+    const inputCombinedText = document.getElementById('inputCombinedText');
+
     const outputText = document.getElementById('outputText');
+    const outputBoxCombined = document.getElementById('outputBoxCombined');
+    const outputBoxesDecomp = document.getElementById('outputBoxesDecomp');
+    const outAtext = document.getElementById('outAtext');
+    const outBtext = document.getElementById('outBtext');
+
     const permSelect = document.getElementById('permSelect');
 
-    let idxA = 0, idxB = 0;
+    const mergeInputsSwitch = document.getElementById('mergeInputsSwitch');
+    const decomposeOutputSwitch = document.getElementById('decomposeOutputSwitch');
+    const decomposeAlert = document.getElementById('decomposeAlert');
 
+    // -------- State --------
+    let idxA = 0, idxB = 0; // which single‑qubit presets are chosen
+
+    // Build all 24 permutations of [0,1,2,3]
     function generatePermutations(arr) {
       const result = [];
       function permute(a, m = []) {
         if (a.length === 0) result.push(m);
         else {
           for (let i = 0; i < a.length; i++) {
-            let curr = a.slice();
-            let next = curr.splice(i, 1);
+            const curr = a.slice();
+            const next = curr.splice(i, 1);
             permute(curr.slice(), m.concat(next));
           }
         }
@@ -112,20 +163,21 @@
       permute(arr);
       return result;
     }
+    const ALL_PERMS = generatePermutations([0,1,2,3]);
 
-    const allPerms = generatePermutations([0,1,2,3]);
-
+    // Dropdown population
     function populatePermSelect(){
       permSelect.innerHTML='';
-      allPerms.forEach((p,i)=>{
+      ALL_PERMS.forEach((p,i)=>{
         const opt=document.createElement('option');
         opt.value=i;
         opt.textContent=p.join(' ');
         permSelect.appendChild(opt);
       });
-      permSelect.value=0;
+      permSelect.value = '0';
     }
 
+    // Place circle radio points
     function placeCirclePoints(circle, isA) {
       const r = 120; const cx = 130, cy = 130;
       STATES.forEach((state, i) => {
@@ -159,28 +211,94 @@
       });
     }
 
-    function updateView(){
-      inputAText.textContent = STATES[idxA].label;
-      inputBText.textContent = STATES[idxB].label;
-
-      const perm=allPerms[permSelect.value];
-
+    // Compute vector in computational basis from two single‑qubit choices
+    function inputVector() {
       const a=STATES[idxA], b=STATES[idxB];
-      const vin=[a.a*b.a, a.a*b.b, a.b*b.a, a.b*b.b];
-      const vout=[0,0,0,0];
-      vin.forEach((val,i)=>{ vout[perm[i]]=val; });
-
-      const basis=['|00⟩','|01⟩','|10⟩','|11⟩'];
-      let repr = '';
-      vout.forEach((c,i)=>{ if(c!==0){ if(repr!=='') repr+=' + '; repr+=(c===-1?'−':'')+basis[i]; } });
-      if(repr==='') repr='0';
-      outputText.textContent = repr;
+      return [a.a*b.a, a.a*b.b, a.b*b.a, a.b*b.b]; // [|00>,|01>,|10>,|11>]
     }
 
+    // Apply permutation π: i -> π[i], so out[π[i]] = in[i]
+    function applyPerm(v, perm) {
+      const out=[0,0,0,0];
+      for(let i=0;i<4;i++) out[perm[i]] = v[i];
+      return out;
+    }
+
+    // Format a 4‑vector as a sum of basis kets with ±1 coefficients
+    function formatBasis(vec){
+      const basis=['|00⟩','|01⟩','|10⟩','|11⟩'];
+      let repr='';
+      vec.forEach((c,i)=>{ if(c!==0){ if(repr!=='') repr+=' + '; repr+=(c===-1?'−':'')+basis[i]; } });
+      return repr || '0';
+    }
+
+    // ---------- Precompute all 64 decomposable outputs ----------
+    const DECOMP_MAP = new Map(); // key "a,b,c,d" -> {ia, ib}
+    (function buildDecomp(){
+      for (let ia=0; ia<STATES.length; ia++) {
+        for (let ib=0; ib<STATES.length; ib++) {
+          const A=STATES[ia], B=STATES[ib];
+          const v=[A.a*B.a, A.a*B.b, A.b*B.a, A.b*B.b];
+          const key = v.join(',');
+          if (!DECOMP_MAP.has(key)) DECOMP_MAP.set(key, { ia, ib });
+        }
+      }
+    })();
+
+    // Try to decompose a 4‑vector; returns null if not found
+    function tryDecompose(vec){
+      const hit = DECOMP_MAP.get(vec.join(','));
+      return hit ? hit : null;
+    }
+
+    function updateView(){
+      // Current permutation from dropdown
+      const perm = ALL_PERMS[+permSelect.value];
+
+      // Input side
+      inputAText.textContent = STATES[idxA].label;
+      inputBText.textContent = STATES[idxB].label;
+      const vin = inputVector();
+
+      // Input merged box text
+      inputCombinedText.textContent = formatBasis(vin);
+
+      // Output
+      const vout = applyPerm(vin, perm);
+      outputText.textContent = formatBasis(vout);
+
+      // Handle input merge toggle
+      const mergeInputs = mergeInputsSwitch.checked;
+      inputBoxesSeparate.classList.toggle('vis-hidden', mergeInputs);
+      inputBoxMerged.classList.toggle('vis-hidden', !mergeInputs);
+
+      // Handle output decomposition toggle
+      const wantDecomp = decomposeOutputSwitch.checked;
+      const decomp = wantDecomp ? tryDecompose(vout) : null;
+      if (wantDecomp && decomp) {
+        // Show two output boxes with single‑qubit labels
+        outAtext.textContent = STATES[decomp.ia].label;
+        outBtext.textContent = STATES[decomp.ib].label;
+        outputBoxCombined.classList.add('vis-hidden');
+        outputBoxesDecomp.classList.remove('vis-hidden');
+        decomposeAlert.classList.add('vis-hidden');
+      } else {
+        // Show combined; optionally show alert if user requested decomp but not possible
+        outputBoxCombined.classList.remove('vis-hidden');
+        outputBoxesDecomp.classList.add('vis-hidden');
+        if (wantDecomp && !decomp) decomposeAlert.classList.remove('vis-hidden'); else decomposeAlert.classList.add('vis-hidden');
+      }
+    }
+
+    // Init
     placeCirclePoints(circleA,true);
     placeCirclePoints(circleB,false);
     populatePermSelect();
-    permSelect.addEventListener('change',updateView);
+
+    permSelect.addEventListener('change', updateView);
+    mergeInputsSwitch.addEventListener('change', updateView);
+    decomposeOutputSwitch.addEventListener('change', updateView);
+
     updateView();
   </script>
 </body>
