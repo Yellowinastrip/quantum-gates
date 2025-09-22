@@ -33,6 +33,7 @@
     .text-overlay.output-combined { top: 165px; left: 940px; transform: translate(-50%, -50%); }
     .text-overlay.output-a { top: 120px; left: 985px; transform: translate(-50%, -50%); }
     .text-overlay.output-b { top: 210px; left: 985px; transform: translate(-50%, -50%); }
+    .text-overlay.gate-label { top: 165px; left: 540px; transform: translate(-50%, -50%); font-size: 24px; color: #212529; }
   </style>
 </head>
 <body class="bg-light text-dark min-vh-100">
@@ -86,7 +87,6 @@
 
           <!-- Gate box -->
           <rect x="380" y="80" width="220" height="140" rx="16" ry="16" fill="#fff3cd" stroke="#ffc107" stroke-width="2" />
-          <text id="gateLabel" x="490" y="150" text-anchor="middle" alignment-baseline="middle" font-size="24" fill="#212529">U_f</text>
 
           <!-- Output wires -->
           <line x1="600" y1="110" x2="900" y2="110" stroke="#adb5bd" stroke-width="4" />
@@ -130,6 +130,7 @@
         <div id="outputText" class="text-overlay output-combined">$|00\rangle$</div>
         <div id="outAtext" class="text-overlay output-a vis-hidden">—</div>
         <div id="outBtext" class="text-overlay output-b vis-hidden">—</div>
+        <div id="gateLabel" class="text-overlay gate-label">$U_f$</div>
       </div>
     </section>
 
@@ -342,7 +343,7 @@
       
       // Trigger MathJax rendering for updated content
       if (window.MathJax && window.MathJax.typesetPromise) {
-        const elements = [inputAText, inputBText, inputCombinedText, outputText, outAtext, outBtext];
+        const elements = [inputAText, inputBText, inputCombinedText, outputText, outAtext, outBtext, gateLabel];
         MathJax.typesetPromise(elements).catch(err => console.log('MathJax error:', err));
       }
     }
@@ -360,12 +361,12 @@
 
       updateView();
       
-      // Render the gate permutation label with MathJax
+      // Render initial MathJax content including gate label
       if (window.MathJax && window.MathJax.typesetPromise) {
         const permLabel = document.querySelector('label[for="permSelect"], .form-label');
-        if (permLabel) {
-          MathJax.typesetPromise([permLabel]).catch(err => console.log('MathJax error:', err));
-        }
+        const elementsToRender = [gateLabel];
+        if (permLabel) elementsToRender.push(permLabel);
+        MathJax.typesetPromise(elementsToRender).catch(err => console.log('MathJax error:', err));
       }
     }
 
