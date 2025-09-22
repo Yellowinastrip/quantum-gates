@@ -25,6 +25,7 @@
     .circle-container { position: relative; width: 260px; height: 260px; border: 2px dashed #d1d5db; border-radius: 50%; margin: 1rem auto; }
     .circle-point { position: absolute; transform: translate(-50%, -50%); }
     .vis-hidden { display: none !important; }
+    .hide-full-range .toggled { display: none !important; }
     .svg-container { position: relative; }
     .text-overlay { position: absolute; pointer-events: none; text-align: center; font-size: 18px; color: #1f2937; }
     .text-overlay.input-a { top: 120px; left: 90px; transform: translate(-50%, -50%); }
@@ -56,6 +57,10 @@
         <div>
           <label class="form-label mb-1">Four possible choices for the hidden $f$ function</label>
           <select id="permSelect" class="form-select"></select>
+        </div>
+        <div class="form-check form-switch">
+          <input class="form-check-input" type="checkbox" id="fullRangeSwitch">
+          <label class="form-check-label" for="fullRangeSwitch">Hide full range of inputs</label>
         </div>
         <div class="form-check form-switch">
           <input class="form-check-input" type="checkbox" id="mergeInputsSwitch">
@@ -140,14 +145,14 @@
   <script>
     // -------- Single‑qubit presets (a|0> + b|1>) --------
     const STATES = [
-      { label: '|0⟩', mathLabel: '$|0\\rangle$', a: 1, b: 0 },
-      { label: '|0⟩+|1⟩', mathLabel: '$|0\\rangle+|1\\rangle$', a: 1, b: 1 },
-      { label: '|1⟩', mathLabel: '$|1\\rangle$', a: 0, b: 1 },
-      { label: '−|0⟩+|1⟩', mathLabel: '$-|0\\rangle+|1\\rangle$', a: -1, b: 1 },
-      { label: '−|0⟩', mathLabel: '$-|0\\rangle$', a: -1, b: 0 },
-      { label: '−|0⟩−|1⟩', mathLabel: '$-|0\\rangle-|1\\rangle$', a: -1, b: -1 },
-      { label: '−|1⟩', mathLabel: '$-|1\\rangle$', a: 0, b: -1 },
-      { label: '|0⟩−|1⟩', mathLabel: '$|0\\rangle-|1\\rangle$', a: 1, b: -1 },
+      { label: '|0⟩', mathLabel: '$|0\\rangle$', a: 1, b: 0, toggled: '' },
+      { label: '|0⟩+|1⟩', mathLabel: '$|0\\rangle+|1\\rangle$', a: 1, b: 1, toggled: 'toggled' },
+      { label: '|1⟩', mathLabel: '$|1\\rangle$', a: 0, b: 1, toggled: '' },
+      { label: '−|0⟩+|1⟩', mathLabel: '$-|0\\rangle+|1\\rangle$', a: -1, b: 1, toggled: 'toggled' },
+      { label: '−|0⟩', mathLabel: '$-|0\\rangle$', a: -1, b: 0, toggled: 'toggled' },
+      { label: '−|0⟩−|1⟩', mathLabel: '$-|0\\rangle-|1\\rangle$', a: -1, b: -1, toggled: 'toggled' },
+      { label: '−|1⟩', mathLabel: '$-|1\\rangle$', a: 0, b: -1, toggled: 'toggled' },
+      { label: '|0⟩−|1⟩', mathLabel: '$|0\\rangle-|1\\rangle$', a: 1, b: -1, toggled: 'toggled' },
     ];
 
     // -------- DOM refs --------
@@ -169,6 +174,7 @@
 
     const mergeInputsSwitch = document.getElementById('mergeInputsSwitch');
     const decomposeOutputSwitch = document.getElementById('decomposeOutputSwitch');
+    const fullRangeSwitch = document.getElementById('fullRangeSwitch');
     const decomposeAlert = document.getElementById('decomposeAlert');
 
     // -------- State --------
@@ -196,7 +202,7 @@
     function populatePermSelect(){
       permSelect.innerHTML='';
 
-      RELEVANT_PERMS = {
+      const RELEVANT_PERMS = {
         "0 1 2 3": "$f$ is zero: $0 \\mapsto 0, 1 \\mapsto 0$",
         "0 1 3 2": "$f$ is identity: $0 \\mapsto 0, 1 \\mapsto 1$",
         "1 0 2 3": "$f$ is negation: $0 \\mapsto 1, 1 \\mapsto 0$",
@@ -224,7 +230,7 @@
         const y = cy + r * Math.sin(angle) + 8;
 
         const wrapper = document.createElement('div');
-        wrapper.className = 'circle-point text-center';
+        wrapper.className = 'circle-point text-center ' + state.toggled;
         wrapper.style.left = x+'px';
         wrapper.style.top = y+'px';
 
@@ -374,6 +380,48 @@
       permSelect.addEventListener('change', updateView);
       mergeInputsSwitch.addEventListener('change', updateView);
       decomposeOutputSwitch.addEventListener('change', updateView);
+      
+      // Handle fullRangeSwitch toggle
+      fullRangeSwitch.addEventListener('change', () => {
+        const body = document.body;
+        if (fullRangeSwitch.checked) {
+          body.classList.add('hide-full-range');
+        } else {
+          body.classList.remove('hide-full-range');
+        }
+        
+        // Check if currently selected states are now hidden
+        const stateA = STATES[idxA];
+        const stateB = STATES[idxB];
+        
+        // If selected state A is hidden, reset to first visible state
+        if (fullRangeSwitch.checked && stateA.toggled === 'toggled') {
+          const firstVisible = STATES.findIndex(state => state.toggled !== 'toggled');
+          if (firstVisible !== -1) {
+            idxA = firstVisible;
+            // Update the radio button selection
+            const radioA = document.querySelector('input[name="stateA"]:checked');
+            if (radioA) radioA.checked = false;
+            const newRadioA = document.querySelectorAll('input[name="stateA"]')[firstVisible];
+            if (newRadioA) newRadioA.checked = true;
+          }
+        }
+        
+        // If selected state B is hidden, reset to first visible state
+        if (fullRangeSwitch.checked && stateB.toggled === 'toggled') {
+          const firstVisible = STATES.findIndex(state => state.toggled !== 'toggled');
+          if (firstVisible !== -1) {
+            idxB = firstVisible;
+            // Update the radio button selection
+            const radioB = document.querySelector('input[name="stateB"]:checked');
+            if (radioB) radioB.checked = false;
+            const newRadioB = document.querySelectorAll('input[name="stateB"]')[firstVisible];
+            if (newRadioB) newRadioB.checked = true;
+          }
+        }
+        
+        updateView();
+      });
 
       updateView();
       
