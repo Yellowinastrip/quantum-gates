@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Quantum Gate Visualizer — Unit Circle Inputs</title>
+  <!-- Bootstrap 5 (no build step) -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <!-- TailwindCSS via CDN (kept for a few utility classes) -->
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet" />
+  <style>
+    /* Circle board */
+    .circle-board { width: 280px; height: 280px; position: relative; border-radius: 50%; background: white; }
+    .circle-board::before { /* unit circle outline */
+      content:''; position:absolute; inset:12px; border:2px dashed #cbd5e1; border-radius:50%;
+    }
+    /* Point styling using Bootstrap's btn-check + label */
+    .state-point { position:absolute; transform:translate(-50%, -50%); cursor:pointer; }
+    .state-label { position:absolute; transform:translate(-50%, calc(-50% - 18px)); font-size:12px; color:#374151; white-space:nowrap; }
+    .dot { width:14px; height:14px; display:inline-block; border-radius:9999px; background:#e5e7eb; border:2px solid #9ca3af; transition:all .15s ease; }
+    .btn-check:checked + .dot { background:#0d6efd; border-color:#0d6efd; box-shadow:0 0 0 4px rgba(13,110,253,.15); }
+    .btn-check:focus + .dot { box-shadow:0 0 0 4px rgba(13,110,253,.25); }
+    /* Smooth text updates */
+    .fade { transition: opacity .2s ease, transform .2s ease; }
+    .fade.enter { opacity: 0; transform: translateY(2px); }
+    .fade.show { opacity: 1; transform: translateY(0); }
+  </style>
+</head>
+<body class="bg-gray-50 text-gray-900 min-h-screen">
+  <main class="max-w-5xl mx-auto p-6">
+    <header class="mb-6">
+      <h1 class="text-2xl sm:text-3xl fw-semibold">Single-Qubit Gate Visualizer</h1>
+      <p class="text-gray-600 mt-1">Pick an input state from the unit circle, then toggle between <span class="fw-semibold">Identity</span> and <span class="fw-semibold">NOT (Pauli‑X)</span>. (Normalization factors are omitted.)</p>
+    </header>
+
+    <!-- Controls -->
+    <section class="grid md:grid-cols-2 gap-4 items-start mb-6">
+      <!-- Input state circle -->
+      <div>
+        <h2 class="text-lg font-medium mb-2">Input states on the unit circle</h2>
+        <div class="circle-board shadow-sm border border-gray-200 rounded-3" id="circleBoard" aria-label="Unit circle state picker">
+          <!-- Points injected by JS -->
+          <!-- Center crosshair for reference -->
+          <div style="position:absolute; top:50%; left:12px; right:12px; height:1px; background:#e5e7eb; transform:translateY(-50%);"></div>
+          <div style="position:absolute; left:50%; top:12px; bottom:12px; width:1px; background:#e5e7eb; transform:translateX(-50%);"></div>
+        </div>
+        <p class="text-xs text-gray-500 mt-2">Eight presets (±|0⟩ and ±|1⟩ and their ± superpositions) are placed evenly around the circle for an intuitive selection.</p>
+      </div>
+
+      <!-- Gate toggle (Bootstrap switch) -->
+      <div class="md:justify-self-end w-full max-w-sm">
+        <h2 class="text-lg font-medium mb-2">Gate</h2>
+        <div class="d-flex align-items-center justify-content-between p-3 bg-white rounded-3 shadow border border-gray-200">
+          <span class="text-sm text-muted">Identity (I)</span>
+          <div class="form-check form-switch m-0">
+            <input id="gateToggle" class="form-check-input" type="checkbox" role="switch" aria-label="Toggle between Identity and NOT gate">
+          </div>
+          <span class="text-sm text-muted">NOT (X)</span>
+        </div>
+        <p class="text-xs text-gray-500 mt-2">I leaves states unchanged. X swaps |0⟩ ↔ |1⟩.</p>
+      </div>
+    </section>
+
+    <!-- Circuit visualization -->
+    <section class="bg-white rounded-2xl shadow border border-gray-200 p-4">
+      <div class="w-full overflow-x-auto">
+        <svg id="circuit" viewBox="0 0 900 220" class="w-full min-w-[680px]">
+          <!-- Wires -->
+          <defs>
+            <marker id="arrow" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+              <path d="M 0 0 L 10 5 L 0 10 z" fill="#4b5563"></path>
+            </marker>
+          </defs>
+
+          <!-- Input wire -->
+          <line x1="80" y1="110" x2="360" y2="110" stroke="#9ca3af" stroke-width="4" marker-end="url(#arrow)" />
+
+          <!-- Gate box -->
+          <rect x="360" y="60" width="180" height="100" rx="16" ry="16" fill="#f3f4f6" stroke="#6366f1" stroke-width="2" />
+          <text id="gateLabel" x="450" y="115" text-anchor="middle" alignment-baseline="middle" font-size="22" fill="#111827" font-weight="600">I</text>
+
+          <!-- Output wire -->
+          <line x1="540" y1="110" x2="820" y2="110" stroke="#9ca3af" stroke-width="4" marker-end="url(#arrow)" />
+
+          <!-- Input/Output state bubbles -->
+          <g id="inputBubble">
+            <rect x="20" y="80" width="120" height="60" rx="12" fill="#eef2ff" stroke="#6366f1" stroke-width="1.5" />
+            <text id="inputText" x="80" y="110" text-anchor="middle" alignment-baseline="middle" font-size="18" fill="#1f2937">|0⟩</text>
+            <title>Input state</title>
+          </g>
+          <g id="outputBubble">
+            <rect x="760" y="80" width="120" height="60" rx="12" fill="#ecfeff" stroke="#06b6d4" stroke-width="1.5" />
+            <text id="outputText" x="820" y="110" text-anchor="middle" alignment-baseline="middle" font-size="18" fill="#1f2937">|0⟩</text>
+            <title>Output state</title>
+          </g>
+        </svg>
+      </div>
+    </section>
+
+    <section class="mt-6 text-sm text-gray-600">
+      <h3 class="font-medium mb-1">How the NOT (X) gate acts</h3>
+      <p>X|ψ⟩ with |ψ⟩ = a|0⟩ + b|1⟩ becomes a|1⟩ + b|0⟩. For the circle presets, a and b are ±1.</p>
+    </section>
+
+    <footer class="mt-8 text-xs text-gray-500">
+      Built as a single HTML file with Bootstrap + Tailwind CDN. No build tools required.
+    </footer>
+  </main>
+
+  <!-- Bootstrap JS -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+  <script>
+    // States: a|0> + b|1>, with a,b in {-1, 0, 1} (only the eight requested)
+    const STATES = [
+      { label: '|0⟩', a: 1,  b: 0 },
+      { label: '|0⟩ + |1⟩', a: 1,  b: 1 },
+      { label: '|1⟩', a: 0,  b: 1 },
+      { label: '−|0⟩ + |1⟩', a: -1, b: 1 },
+      { label: '−|0⟩', a: -1, b: 0 },
+      { label: '−|0⟩ − |1⟩', a: -1, b: -1 },
+      { label: '−|1⟩', a: 0,  b: -1 },
+      { label: '|0⟩ − |1⟩', a: 1,  b: -1 },
+    ];
+
+    // Map each state to an angle (evenly spaced around the circle)
+    // Start at -90° (top) and go clockwise
+    const anglesDeg = [ -90, -45, 0, 45, 90, 135, 180, -135 ];
+
+    // Cached DOM elements
+    const inputText  = document.getElementById('inputText');
+    const outputText = document.getElementById('outputText');
+    const gateToggle = document.getElementById('gateToggle');
+    const gateLabel  = document.getElementById('gateLabel');
+    const board      = document.getElementById('circleBoard');
+
+    // State
+    let currentIndex = 0; // default |0>
+    let isNotGate = false;
+
+    function formatState(a, b) {
+      const parts = [];
+      if (a !== 0) parts.push((a === 1 ? '' : '−') + '|0⟩');
+      if (b !== 0) {
+        if (parts.length === 0) parts.push((b === 1 ? '' : '−') + '|1⟩');
+        else parts.push((b === 1 ? ' + ' : ' − ') + '|1⟩');
+      }
+      if (parts.length === 0) return '0';
+      return parts.join('');
+    }
+
+    function computeOutput(a, b, useNot) {
+      return useNot ? { a: b, b: a } : { a, b };
+    }
+
+    function updateGateLabel() { gateLabel.textContent = isNotGate ? 'X' : 'I'; }
+
+    function updateView() {
+      const state = STATES[currentIndex];
+      inputText.textContent = state.label;
+      const out = computeOutput(state.a, state.b, isNotGate);
+      const outLabel = formatState(out.a, out.b);
+      outputText.classList.add('fade','enter');
+      requestAnimationFrame(() => {
+        outputText.textContent = outLabel;
+        outputText.classList.remove('enter');
+        outputText.classList.add('show');
+        setTimeout(() => outputText.classList.remove('fade','show'), 220);
+      });
+    }
+
+    function placePoints() {
+      const w = board.clientWidth; const h = board.clientHeight;
+      const cx = w / 2; const cy = h / 2;
+      const r = Math.min(w, h) / 2 - 18; // radius, with padding to stay inside dashed circle
+
+      anglesDeg.forEach((deg, i) => {
+        const rad = deg * Math.PI / 180;
+        const x = cx + r * Math.cos(rad);
+        const y = cy + r * Math.sin(rad);
+
+        // Create checkbox + dot label
+        const id = 'state-' + i;
+        const input = document.createElement('input');
+        input.type = 'checkbox';
+        input.className = 'btn-check';
+        input.autocomplete = 'off';
+        input.id = id;
+        input.checked = (i === currentIndex);
+
+        const dot = document.createElement('label');
+        dot.setAttribute('for', id);
+        dot.className = 'dot state-point';
+        dot.style.left = x + 'px';
+        dot.style.top  = y + 'px';
+        dot.title = STATES[i].label;
+
+        // Text label above the point
+        const txt = document.createElement('div');
+        txt.className = 'state-label';
+        txt.textContent = STATES[i].label;
+        txt.style.left = x + 'px';
+        txt.style.top  = y + 'px';
+
+        // Behavior: behave like radios — only one checked
+        input.addEventListener('change', () => {
+          if (input.checked) {
+            // Uncheck all others
+            document.querySelectorAll('.btn-check[id^="state-"]').forEach(el => { if (el !== input) el.checked = false; });
+            currentIndex = i;
+            updateView();
+          } else {
+            // Prevent unchecking the last one — keep one always active
+            input.checked = true;
+          }
+        });
+
+        board.appendChild(input);
+        board.appendChild(dot);
+        board.appendChild(txt);
+      });
+    }
+
+    // Initialize
+    placePoints();
+    updateGateLabel();
+    updateView();
+
+    gateToggle.addEventListener('change', () => { isNotGate = gateToggle.checked; updateGateLabel(); updateView(); });
+
+    // Handle resize to keep labels aligned (optional)
+    window.addEventListener('resize', () => {
+      // Rebuild points to recompute positions
+      board.innerHTML = '<div style="position:absolute; top:50%; left:12px; right:12px; height:1px; background:#e5e7eb; transform:translateY(-50%);"></div>'+
+                        '<div style="position:absolute; left:50%; top:12px; bottom:12px; width:1px; background:#e5e7eb; transform:translateX(-50%);"></div>';
+      placePoints();
+    });
+  </script>
+</body>
+</html>

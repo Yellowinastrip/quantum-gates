@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Deutsch algorithm</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <style>
+    :root{ --ink:#e8ecff; --muted:#a3aed1; --glass:rgba(255,255,255,.06); }
+    body{background: radial-gradient(1000px 600px at 30% -10%, #0b132b 0%, #0a0f24 50%, #070b18 100%); color:var(--ink)}
+    .wrap{max-width:1160px; margin:40px auto; padding: 0 16px;}
+    .muted{color:var(--muted)}
+    .card-glass{background:var(--glass); backdrop-filter: blur(8px); border:1px solid rgba(255,255,255,.12); border-radius:16px}
+    .gate{fill:#11182f; stroke:#b9c3ff; stroke-width:2; filter: drop-shadow(0 4px 10px rgba(0,0,0,.35));}
+    .wire{stroke:#88a2ff; stroke-width:3}
+    .node{fill:#cde1ff}
+    .label{font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace; font-size:14px}
+    .ket{font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial}
+    .toggle{display:flex; gap:.5rem; background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.15); border-radius:999px; padding:4px}
+    .toggle button{border:none; background:transparent; color:var(--ink); padding:.35rem .7rem; border-radius:999px; white-space:nowrap}
+    .toggle button.active{background:#2a3358}
+    .mono{font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono"}
+
+    /* Signed histogram (amplitude in [-1,1]) */
+    .bibar{position:relative; width:100%; height:22px; background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.15); border-radius:12px; overflow:hidden}
+    .bibar::before{content:""; position:absolute; left:50%; top:0; width:1px; height:100%; background:rgba(255,255,255,.35)} /* zero axis */
+    .bibar .pos, .bibar .neg{position:absolute; top:0; height:100%; width:0; transition: width .4s ease}
+    .bibar .pos{left:50%; background:linear-gradient(90deg,#7aa5ff,#528bff)}   /* extends right for + */
+    .bibar .neg{right:50%; background:linear-gradient(90deg,#38d9a9,#21bf99)}  /* extends left for − */
+    .bar-row{display:flex; align-items:center; gap:.5rem}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header class="text-center mb-4">
+      <h1 class="h4 fw-bold">Deutsch algorithm</h1>
+      <p class="muted mb-0">Parameterization: <span class="ket">|ψ⟩ = α|0⟩ + β|1⟩</span> with <span class="mono">α = cos(2πs), β = sin(2πs)</span>,
+        <span class="mono">s ∈ [0,1)</span>. Toggle output basis to {|+⟩,|−⟩} when needed.</p>
+    </header>
+
+    <!-- Controls -->
+    <div class="card-glass p-3 p-md-4 mb-3">
+      <div class="row g-3 align-items-center">
+        <div class="col-12 col-md-6">
+          <label class="form-label">Mix slider s ∈ [0,1)</label>
+          <div class="d-flex align-items-center gap-3">
+            <input id="sSlider" type="range" class="form-range" min="0" max="0.999" step="0.001" value="0" />
+            <div class="mono"><span class="muted">s=</span><span id="sVal">0.000</span></div>
+          </div>
+          <div class="small muted">Real amplitudes, normalized by construction: cos²(2πs)+sin²(2πs)=1.</div>
+          <div class="mt-2 d-flex gap-2 flex-wrap">
+            <button id="setPlus" class="btn btn-outline-light btn-sm">Set input to |+⟩</button>
+            <button id="setMinus" class="btn btn-outline-light btn-sm">Set input to |−⟩</button>
+            <button id="setZero" class="btn btn-outline-light btn-sm">Set input to |0⟩</button>
+            <button id="setOne" class="btn btn-outline-light btn-sm">Set input to |1⟩</button>
+          </div>
+        </div>
+        <div class="col-12 col-md-6">
+          <div class="d-flex flex-wrap align-items-center gap-2">
+            <button id="randomF" class="btn btn-primary btn-sm">🎲 Randomize f</button>
+            <button id="revealF" class="btn btn-warning btn-sm">👀 Reveal (teacher)</button>
+            <span id="fBadge" class="badge text-bg-info">hidden</span>
+            <div class="ms-auto toggle" role="group" aria-label="Output basis">
+              <button id="basisZ" class="active" title="{|0⟩,|1⟩}">|0⟩/|1⟩</button>
+              <button id="basisX" title="{|+⟩,|−⟩}">|+⟩/|−⟩</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Diagram -->
+    <div class="card-glass p-3 p-md-4">
+      <svg id="scene" viewBox="0 0 980 220" width="100%" height="220">
+        <line class="wire" x1="60" y1="110" x2="920" y2="110" />
+        <circle class="node" cx="60" cy="110" r="5" />
+        <circle class="node" cx="920" cy="110" r="5" />
+        <rect class="gate" x="430" y="80" width="120" height="60" rx="8" />
+        <text x="490" y="115" text-anchor="middle" fill="#e8ecff" font-size="18" class="ket">U<tspan baseline-shift="sub">f</tspan></text>
+        <text id="inLabel" class="label" x="90" y="90" fill="#cfe3ff" text-anchor="start">α|0⟩ + β|1⟩</text>
+        <text id="inVals"  class="label" x="90" y="135" fill="#8fb3ff" text-anchor="start"></text>
+        <text id="outLabel" class="label" x="900" y="90" fill="#cfe3ff" text-anchor="end">—</text>
+        <text id="outVals"  class="label" x="900" y="135" fill="#8fb3ff" text-anchor="end"></text>
+      </svg>
+
+      <!-- Signed Histograms -->
+      <div class="row g-4 mt-2">
+        <div class="col-12 col-lg-6">
+          <div class="small muted mb-1">Input amplitudes (Z basis) — range [−1, 1]</div>
+          <div class="bar-row mb-1"><span class="ket" style="min-width:2.5rem">|0⟩</span>
+            <div class="bibar flex-grow-1">
+              <div class="neg" id="inAneg"></div>
+              <div class="pos" id="inApos"></div>
+            </div>
+            <span class="mono" id="inAtext">+0.000</span>
+          </div>
+          <div class="bar-row"><span class="ket" style="min-width:2.5rem">|1⟩</span>
+            <div class="bibar flex-grow-1">
+              <div class="neg" id="inBneg"></div>
+              <div class="pos" id="inBpos"></div>
+            </div>
+            <span class="mono" id="inBtext">+0.000</span>
+          </div>
+        </div>
+        <div class="col-12 col-lg-6">
+          <div class="small muted mb-1">Output amplitudes (<span id="outBasisLabel">Z</span> basis) — range [−1, 1]</div>
+          <div class="bar-row mb-1"><span class="ket" id="outLab0" style="min-width:2.5rem">|0⟩</span>
+            <div class="bibar flex-grow-1">
+              <div class="neg" id="out0neg"></div>
+              <div class="pos" id="out0pos"></div>
+            </div>
+            <span class="mono" id="out0text">+0.000</span>
+          </div>
+          <div class="bar-row"><span class="ket" id="outLab1" style="min-width:2.5rem">|1⟩</span>
+            <div class="bibar flex-grow-1">
+              <div class="neg" id="out1neg"></div>
+              <div class="pos" id="out1pos"></div>
+            </div>
+            <span class="mono" id="out1text">+0.000</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <p class="mt-3 small muted mb-0">
+      Hidden functions: <span class="mono">0</span>, <span class="mono">1</span>, <span class="mono">id</span>, <span class="mono">not</span>. Action of <span class="ket">U<sub>f</sub></span> (phase form): multiply |0⟩ by (−1)^{f(0)} and |1⟩ by (−1)^{f(1)}.
+    </p>
+  </div>
+
+  <script>
+    // Elements
+    const sSlider = document.getElementById('sSlider');
+    const sVal = document.getElementById('sVal');
+    const inLabel = document.getElementById('inLabel');
+    const outLabel = document.getElementById('outLabel');
+    const inVals = document.getElementById('inVals');
+    const outVals = document.getElementById('outVals');
+    const fBadge = document.getElementById('fBadge');
+
+    const btnPlus = document.getElementById('setPlus');
+    const btnMinus = document.getElementById('setMinus');
+    const btnOne = document.getElementById('setOne');
+    const btnZero = document.getElementById('setZero');
+    const btnRand = document.getElementById('randomF');
+    const btnReveal = document.getElementById('revealF');
+
+    const basisZ = document.getElementById('basisZ');
+    const basisX = document.getElementById('basisX');
+
+    // Signed histogram DOM
+    const inAneg = document.getElementById('inAneg');
+    const inApos = document.getElementById('inApos');
+    const inBneg = document.getElementById('inBneg');
+    const inBpos = document.getElementById('inBpos');
+    const inAtext = document.getElementById('inAtext');
+    const inBtext = document.getElementById('inBtext');
+
+    const out0neg = document.getElementById('out0neg');
+    const out0pos = document.getElementById('out0pos');
+    const out1neg = document.getElementById('out1neg');
+    const out1pos = document.getElementById('out1pos');
+    const out0text = document.getElementById('out0text');
+    const out1text = document.getElementById('out1text');
+    const outLab0 = document.getElementById('outLab0');
+    const outLab1 = document.getElementById('outLab1');
+    const outBasisLabel = document.getElementById('outBasisLabel');
+
+    // Model
+    let basis = 'Z';   // 'Z' => |0>,|1>; 'X' => |+>,|->
+    let hiddenF = 0;   // 0 c0, 1 c1, 2 id, 3 not
+
+    function pickRandomF(){ hiddenF = Math.floor(Math.random()*4); fBadge.textContent = 'hidden'; fBadge.className = 'badge text-bg-info'; update(); }
+    function revealF(){ const names=['f ≡ 0','f ≡ 1','f ≡ id','f ≡ not']; fBadge.textContent = names[hiddenF]; fBadge.className = 'badge text-bg-success'; }
+
+    function fSigns(){ switch(hiddenF){ case 0: return [ 1,  1]; case 1: return [-1, -1]; case 2: return [ 1, -1]; case 3: return [-1,  1]; } }
+
+    function inputAB(){
+      const s = parseFloat(sSlider.value);
+      const theta = 2*Math.PI * s; // 0..2π (1 excluded by slider max)
+      const a = Math.cos(theta);
+      const b = Math.sin(theta);
+      return {a,b,s};
+    }
+
+    function applyUf(a,b){ const [p0,p1] = fSigns(); return {a: p0*a, b: p1*b}; }
+    function toPlusMinus(a,b){ const inv = 1/Math.sqrt(2); return { cPlus:(a+b)*inv, cMinus:(a-b)*inv }; }
+    function fmt(num){ const s = (num>=0? '+':'−'); return s + Math.abs(num).toFixed(3); }
+
+    function setBibar(domNeg, domPos, val){
+      const w = Math.min(1, Math.max(0, Math.abs(val))) * 50; // percent of container; 50% == full to one side
+      if(val >= 0){ domPos.style.width = w + '%'; domNeg.style.width = '0%'; }
+      else{ domNeg.style.width = w + '%'; domPos.style.width = '0%'; }
+    }
+
+    function update(){
+      const {a,b,s} = inputAB();
+      sVal.textContent = s.toFixed(3);
+
+      // Input text
+      inLabel.textContent = `Input: ${fmt(a)}|0⟩ + ${fmt(b)}|1⟩`;
+
+      // Input histograms (signed)
+      setBibar(inAneg, inApos, a); inAtext.textContent = fmt(a);
+      setBibar(inBneg, inBpos, b); inBtext.textContent = fmt(b);
+
+      // U_f → output (still amplitudes)
+      const out = applyUf(a,b);
+
+      if(basis==='Z'){
+        outBasisLabel.textContent = 'Z';
+        outLab0.textContent = '|0⟩';
+        outLab1.textContent = '|1⟩';
+
+        outLabel.textContent = `Output: ${fmt(out.a)}|0⟩ + ${fmt(out.b)}|1⟩`;
+        setBibar(out0neg, out0pos, out.a); out0text.textContent = fmt(out.a);
+        setBibar(out1neg, out1pos, out.b); out1text.textContent = fmt(out.b);
+      }else{
+        outBasisLabel.textContent = 'X';
+        outLab0.textContent = '|+⟩';
+        outLab1.textContent = '|−⟩';
+
+        const {cPlus, cMinus} = toPlusMinus(out.a, out.b);
+        outLabel.textContent = `Output: ${fmt(cPlus)}|+⟩ + ${fmt(cMinus)}|−⟩`;
+        setBibar(out0neg, out0pos, cPlus); out0text.textContent = fmt(cPlus);
+        setBibar(out1neg, out1pos, cMinus); out1text.textContent = fmt(cMinus);
+      }
+    }
+
+    // Events
+    sSlider.addEventListener('input', update);
+    btnPlus.addEventListener('click', ()=>{ sSlider.value = 0.125; update(); });
+    btnMinus.addEventListener('click', ()=>{ sSlider.value = 0.875; update(); });
+    btnZero.addEventListener('click', ()=>{ sSlider.value = 0.0; update(); });
+    btnOne.addEventListener('click', ()=>{ sSlider.value = 0.25; update(); });
+    btnRand.addEventListener('click', pickRandomF);
+    btnReveal.addEventListener('click', revealF);
+    basisZ.addEventListener('click', ()=>{ basis='Z'; basisZ.classList.add('active'); basisX.classList.remove('active'); update(); });
+    basisX.addEventListener('click', ()=>{ basis='X'; basisX.classList.add('active'); basisZ.classList.remove('active'); update(); });
+
+    // Init
+    pickRandomF();
+    update();
+  </script>
+</body>
+</html>
